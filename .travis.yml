@@ -1,0 +1,16 @@
+Language: c
+compiler:
+    - gcc
+    - clang
+branches:
+    only:
+        - master
+        - dev
+before_install:
+    - sudo apt-get update -qq
+install:
+    - sudo apt-get install nasm openssl cmake libevent-dev libpng-dev libmemcached-dev
+script:
+    - make
+    - cd bin
+    - ./zimg conf/zimg.lua
