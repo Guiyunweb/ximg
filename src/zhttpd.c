@@ -31,7 +31,6 @@
 #include "zdb.h"
 #include "zaccess.h"
 #include "cjson/cJSON.h"
-#include "zurl.h"
 
 typedef struct
 {
@@ -56,10 +55,6 @@ void post_request_cb(evhtp_request_t *req, void *arg);
 void get_request_cb(evhtp_request_t *req, void *arg);
 void admin_request_cb(evhtp_request_t *req, void *arg);
 void info_request_cb(evhtp_request_t *req, void *arg);
-int b64_decode(const char *in, int in_len, char *out);
-void base64_request_cb(evhtp_request_t *req, void *arg);
-int b64_int(int ch);
-char b64_chr[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static const char *post_error_list[] = {
     "Internal error.",
@@ -92,63 +87,7 @@ static const char *method_strmap[] = {
     "PATCH",
     "UNKNOWN",
 };
-int b64_int(int ch)
-{
 
-    // ASCII to base64_int
-    // 65-90  Upper Case  >>  0-25
-    // 97-122 Lower Case  >>  26-51
-    // 48-57  Numbers     >>  52-61
-    // 43     Plus (+)    >>  62
-    // 47     Slash (/)   >>  63
-    // 61     Equal (=)   >>  64~
-    if (ch == 43)
-        return 62;
-    if (ch == 47)
-        return 63;
-    if (ch == 61)
-        return 64;
-    if ((ch > 47) && (ch < 58))
-        return ch + 4;
-    if ((ch > 64) && (ch < 91))
-        return ch - 'A';
-    if ((ch > 96) && (ch < 123))
-        return (ch - 'a') + 26;
-    return 0;
-}
-int b64_decode(const char *in, int in_len, char *out)
-{
-    int i = 0, j = 0, k = 0, s[4];
-
-    for (i = 0; i < in_len; i++)
-    {
-        s[j++] = b64_int(*(in + i));
-        if (j == 4)
-        {
-            out[k + 0] = (char)(((s[0] & 255) << 2) + ((s[1] & 0x30) >> 4));
-            if (s[2] != 64)
-            {
-                out[k + 1] = (char)(((s[1] & 0x0F) << 4) + ((s[2] & 0x3C) >> 2));
-                if ((s[3] != 64))
-                {
-                    out[k + 2] = (char)(((s[2] & 0x03) << 6) + (s[3]));
-                    k += 3;
-                }
-                else
-                {
-                    k += 2;
-                }
-            }
-            else
-            {
-                k += 1;
-            }
-            j = 0;
-        }
-    }
-
-    return k;
-}
 /**
  * @brief zimg_etag_set set zimg response etag
  *
@@ -738,114 +677,7 @@ done:
     free(mp_arg);
     return err_no;
 }
-void base64_request_cb(evhtp_request_t *req, void *arg)
-{
-    char *buff = NULL;
-    char *temp = NULL;
-    int err_no = 0;
-    int ret_json = 1;
-    evhtp_connection_t *ev_conn = evhtp_request_get_connection(req);
-    struct sockaddr *saddr = ev_conn->saddr;
-    struct sockaddr_in *ss = (struct sockaddr_in *)saddr;
-    char address[16];
 
-    const char *xff_address = evhtp_header_find(req->headers_in, "X-Forwarded-For");
-    if (xff_address)
-    {
-        inet_aton(xff_address, &ss->sin_addr);
-    }
-    strncpy(address, inet_ntoa(ss->sin_addr), 16);
-
-    int req_method = evhtp_request_get_method(req);
-    if (req_method >= 16)
-        req_method = 16;
-    LOG_PRINT(LOG_DEBUG, "Method: %d", req_method);
-    if (strcmp(method_strmap[req_method], "POST") != 0)
-    {
-        LOG_PRINT(LOG_DEBUG, "Request Method Not Support.");
-        LOG_PRINT(LOG_INFO, "%s refuse post method", address);
-        err_no = 2;
-        goto err;
-    }
-    evhtp_kvs_t *params;
-    params = req->uri->query;
-    if (params == NULL)
-    {
-        LOG_PRINT(LOG_DEBUG, "no data upload");
-        goto err;
-    }
-    const char *base64 = evhtp_kv_find(params, "base64");
-    if (!base64)
-    {
-        LOG_PRINT(LOG_DEBUG, "no data upload");
-        goto err;
-    }
-
-    LOG_PRINT(LOG_DEBUG, "before url decode");
-    temp = url_decode(base64);
-    LOG_PRINT(LOG_DEBUG, "end url decode");
-
-    int len = strlen(temp);
-    int str_len = len / 4 * 3 - 2;
-    //判断编码后的字符串后是否有=
-    // if (strstr(temp, "=="))
-    //     str_len = len / 4 * 3 - 2;
-    // else if (strstr(temp, "="))
-    //     str_len = len / 4 * 3 - 1;
-    // else
-    //     str_len = len / 4;
-
-    buff = malloc(str_len);
-    if (!buff)
-    {
-        LOG_PRINT(LOG_DEBUG, "temp buff Malloc Failed!");
-        goto err;
-    }
-
-    LOG_PRINT(LOG_DEBUG, "before b64_decode");
-    int length = b64_decode(temp, len, buff);
-    LOG_PRINT(LOG_DEBUG, "end b64_decode");
-    evthr_t *thread = get_request_thr(req);
-    thr_arg_t *thr_arg = (thr_arg_t *)evthr_get_aux(thread);
-    char md5sum[33];
-    if (save_img(thr_arg, buff, length, md5sum) == -1)
-    {
-        LOG_PRINT(LOG_DEBUG, "Image Save Failed!");
-        LOG_PRINT(LOG_ERROR, "%s fail post save", address);
-        goto err;
-    }
-    err_no = -1;
-    LOG_PRINT(LOG_INFO, "%s succ post pic:%s size:%d", address, md5sum, length);
-    json_return(req, err_no, md5sum, length);
-    evhtp_headers_add_header(req->headers_out, evhtp_header_new("Server", settings.server_name, 0, 1));
-    evhtp_send_reply(req, EVHTP_RES_OK);
-    LOG_PRINT(LOG_DEBUG, "============base64_request_cb() SUCC!===============");
-    goto done;
-err:
-    if (temp != NULL)
-    {
-        free(temp);
-    }
-    if (buff != NULL)
-    {
-        free(buff);
-    }
-    if (ret_json == 0)
-    {
-        evbuffer_add_printf(req->buffer_out, "<h1>Upload Failed!</h1></body></html>");
-        evhtp_headers_add_header(req->headers_out, evhtp_header_new("Content-Type", "text/html", 0, 0));
-    }
-    else
-    {
-        json_return(req, err_no, NULL, 0);
-    }
-    evhtp_headers_add_header(req->headers_out, evhtp_header_new("Server", settings.server_name, 0, 1));
-    evhtp_send_reply(req, EVHTP_RES_OK);
-    LOG_PRINT(LOG_DEBUG, "============base64_request_cb() ERROR!===============");
-done:
-    free(temp);
-    free(buff)
-}
 /**
  * @brief post_request_cb The callback function of a POST request to upload a image.
  *

@@ -44,6 +44,7 @@
 #include "zlog.h"
 #include "zcache.h"
 #include "zlscale.h"
+#include "xhttpd.h"
 
 #if __APPLE__
 #undef daemon
