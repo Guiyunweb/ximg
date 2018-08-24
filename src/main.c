@@ -108,7 +108,7 @@ static void settings_init(void)
     settings.max_keepalives = 1;
     settings.retry = 3;
     str_lcpy(settings.version, STR(PROJECT_VERSION), sizeof(settings.version));
-    snprintf(settings.server_name, 128, "zimg/%s", settings.version);
+    snprintf(settings.server_name, 128, "XServer/%s", settings.version);
     settings.headers = NULL;
     settings.etag = 0;
     settings.up_access = NULL;
@@ -142,6 +142,13 @@ static void settings_init(void)
     callbacks->on_header_value = on_header_value;
     callbacks->on_chunk_data = on_chunk_data;
     settings.mp_set = callbacks;
+
+    x_multipart_parser_settings *xcallbacks = (x_multipart_parser_settings *)malloc(sizeof(x_multipart_parser_settings));
+    memset(xcallbacks, 0, sizeof(x_multipart_parser_settings));
+    xcallbacks->x_on_header_value = x_on_header_value;
+    xcallbacks->x_on_chunk_data = x_on_chunk_data;
+    settings.x_mp_set = xcallbacks;
+
     settings.get_img = NULL;
     settings.info_img = NULL;
     settings.admin_img = NULL;
@@ -218,9 +225,9 @@ static int load_conf(const char *conf)
     lua_getglobal(L, "system");
     if (lua_isstring(L, -1))
     {
-        char tmp[128];
-        snprintf(tmp, 128, "%s %s", settings.server_name, lua_tostring(L, -1));
-        snprintf(settings.server_name, 128, "%s", tmp);
+        // char tmp[128];
+        // snprintf(tmp, 128, "%s %s", settings.server_name, lua_tostring(L, -1));
+        // snprintf(settings.server_name, 128, "%s", tmp);
     }
     lua_pop(L, 1);
 
@@ -556,8 +563,8 @@ int main(int argc, char **argv)
         }
         else
         {
-            fprintf(stdout, "zimg %s\n", settings.version);
-            fprintf(stdout, "Copyright (c) 2013-2014 zimg.buaa.us\n");
+            fprintf(stdout, "XServer %s\n", settings.version);
+            fprintf(stdout, "Copyright (c) 2018-2020 www.xtgss.cn\n");
             fprintf(stderr, "\n");
         }
     }
@@ -666,6 +673,7 @@ int main(int argc, char **argv)
     evhtp_set_cb(htp, "/info", info_request_cb, NULL);
     evhtp_set_cb(htp, "/echo", echo_cb, NULL);
     evhtp_set_cb(htp, "/base64", base64_request_cb, NULL);
+    evhtp_set_cb(htp, "/up", post_upload_request_cb, NULL);
     evhtp_set_gencb(htp, get_request_cb, NULL);
 #ifndef EVHTP_DISABLE_EVTHR
     evhtp_use_threads(htp, init_thread, settings.num_threads, NULL);

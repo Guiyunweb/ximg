@@ -350,13 +350,13 @@ void add_info(MagickWand *im, evhtp_request_t *req)
     //{"ret":true,"info":{"size":195135,"width":720,"height":480,"quality":75,"format":"JPEG"}}
     cJSON *j_ret = cJSON_CreateObject();
     cJSON *j_ret_info = cJSON_CreateObject();
-    cJSON_AddBoolToObject(j_ret, "ret", 1);
+    cJSON_AddNumberToObject(j_ret, "code", 200);
     cJSON_AddNumberToObject(j_ret_info, "size", size);
     cJSON_AddNumberToObject(j_ret_info, "width", width);
     cJSON_AddNumberToObject(j_ret_info, "height", height);
     cJSON_AddNumberToObject(j_ret_info, "quality", quality);
     cJSON_AddStringToObject(j_ret_info, "format", format);
-    cJSON_AddItemToObject(j_ret, "info", j_ret_info);
+    cJSON_AddItemToObject(j_ret, "data", j_ret_info);
     char *ret_str_unformat = cJSON_PrintUnformatted(j_ret);
     LOG_PRINT(LOG_DEBUG, "ret_str_unformat: %s", ret_str_unformat);
     evbuffer_add_printf(req->buffer_out, "%s", ret_str_unformat);
@@ -413,7 +413,7 @@ void dump_request_cb(evhtp_request_t *req, void *arg)
  */
 void echo_cb(evhtp_request_t *req, void *arg)
 {
-    evbuffer_add_printf(req->buffer_out, "<html><body><h1>zimg works!</h1></body></html>");
+    evbuffer_add_printf(req->buffer_out, "<html><body><h1>it's works!</h1></body></html>");
     evhtp_headers_add_header(req->headers_out, evhtp_header_new("Server", settings.server_name, 0, 1));
     evhtp_headers_add_header(req->headers_out, evhtp_header_new("Content-Type", "text/html", 0, 0));
     evhtp_send_reply(req, EVHTP_RES_OK);

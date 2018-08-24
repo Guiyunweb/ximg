@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "xutil.h"
-
-
+#include "zlog.h"
+#include "cjson/cJSON.h"
 const char b64_chr[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 int b64_int(int ch)
 {
@@ -64,7 +64,7 @@ int b64_decode(const char *in, int in_len, char *out)
     return k;
 }
 
-int url_decode(const char *str,char *dest)
+int url_decode(const char *str, char *dest)
 {
     char e_str[] = "00";
     int j = 0;
@@ -95,4 +95,35 @@ int url_decode(const char *str,char *dest)
         }
     }
     return j;
+}
+void operatorInfo(img_info *info, cJSON *array)
+{
+    cJSON *j_ret_info = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_ret_info, "code", info->code);
+    cJSON_AddNumberToObject(j_ret_info, "size", info->size);
+    cJSON_AddStringToObject(j_ret_info, "md5", info->md5);
+    cJSON_AddStringToObject(j_ret_info, "msg", info->msg);
+    cJSON_AddNumberToObject(j_ret_info, "width", info->width);
+    cJSON_AddNumberToObject(j_ret_info, "height", info->height);
+    cJSON_AddItemToArray(array, j_ret_info);
+    free(info);
+}
+char *result2json(LinkedList *list)
+{
+    cJSON *j_ret = cJSON_CreateObject();
+    cJSON *array = cJSON_CreateArray();
+    if (list)
+    {
+        operatorLinkedList(list, (OPERATOR)operatorInfo, array);
+        cJSON_AddNumberToObject(j_ret, "code", 200);
+    }
+    else
+    {
+        cJSON_AddNumberToObject(j_ret, "code", 201);
+    }
+    cJSON_AddItemToObject(j_ret, "data", array);
+    char *ret = cJSON_PrintUnformatted(j_ret);
+    cJSON_Delete(j_ret);
+    freeLinkedList(list);
+    return ret;
 }

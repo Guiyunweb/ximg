@@ -31,27 +31,31 @@
 #include "libevhtp/evhtp.h"
 #include "zaccess.h"
 #include "zhttpd.h"
+#include "xhttpd.h"
 #include "multipart-parser-c/multipart_parser.h"
+#include "xparser.h"
 
 #ifndef PROJECT_VERSION
 #define PROJECT_VERSION "3.2.0"
 #endif
 
-#define MAX_LINE            1024
-#define CACHE_MAX_SIZE      1048576 //1024*1024
-#define RETRY_TIME_WAIT     1000
-#define CACHE_KEY_SIZE      128
-#define PATH_MAX_SIZE       512
+#define MAX_LINE 1024
+#define CACHE_MAX_SIZE 1048576 //1024*1024
+#define RETRY_TIME_WAIT 1000
+#define CACHE_KEY_SIZE 128
+#define PATH_MAX_SIZE 512
 
-typedef struct thr_arg_s {
+typedef struct thr_arg_s
+{
     evthr_t *thread;
     memcached_st *cache_conn;
     memcached_st *beansdb_conn;
     redisContext *ssdb_conn;
-    lua_State* L;
+    lua_State *L;
 } thr_arg_t;
 
-typedef struct zimg_req_s {
+typedef struct zimg_req_s
+{
     char *md5;
     char *type;
     int width;
@@ -67,7 +71,8 @@ typedef struct zimg_req_s {
     thr_arg_t *thr_arg;
 } zimg_req_t;
 
-struct setting {
+struct setting
+{
     lua_State *L;
     int is_daemon;
     char ip[128];
@@ -106,38 +111,42 @@ struct setting {
     char ssdb_ip[128];
     int ssdb_port;
     multipart_parser_settings *mp_set;
+    x_multipart_parser_settings *x_mp_set;
     int (*get_img)(zimg_req_t *, evhtp_request_t *);
     int (*info_img)(evhtp_request_t *, thr_arg_t *, char *);
     int (*admin_img)(evhtp_request_t *, thr_arg_t *, char *, int);
 } settings;
 
-#define LOG_FATAL       0           /* System is unusable */
-#define LOG_ALERT       1           /* Action must be taken immediately */
-#define LOG_CRIT        2           /* Critical conditions */
-#define LOG_ERROR       3           /* Error conditions */
-#define LOG_WARNING     4           /* Warning conditions */
-#define LOG_NOTICE      5           /* Normal, but significant */
-#define LOG_INFO        6           /* Information */
-#define LOG_DEBUG       7           /* DEBUG message */
+#define LOG_FATAL 0   /* System is unusable */
+#define LOG_ALERT 1   /* Action must be taken immediately */
+#define LOG_CRIT 2    /* Critical conditions */
+#define LOG_ERROR 3   /* Error conditions */
+#define LOG_WARNING 4 /* Warning conditions */
+#define LOG_NOTICE 5  /* Normal, but significant */
+#define LOG_INFO 6    /* Information */
+#define LOG_DEBUG 7   /* DEBUG message */
 
 #ifdef DEBUG
-#define LOG_PRINT(level, fmt, ...)            \
-    do { \
+#define LOG_PRINT(level, fmt, ...)                     \
+    do                                                 \
+    {                                                  \
         int log_id = log_open(settings.log_name, "a"); \
-        log_printf0(log_id, level, "%s:%d %s() "fmt,   \
-        __FILE__, __LINE__, __FUNCTION__, \
-        ##__VA_ARGS__); \
-        log_close(log_id); \
-    }while(0)
+        log_printf0(log_id, level, "%s:%d %s() " fmt,  \
+                    __FILE__, __LINE__, __FUNCTION__,  \
+                    ##__VA_ARGS__);                    \
+        log_close(log_id);                             \
+    } while (0)
 #else
-#define LOG_PRINT(level, fmt, ...)            \
-    do { \
-        if (level <= settings.log_level) { \
-            int log_id = log_open(settings.log_name, "a"); \
-            log_printf0(log_id, level, fmt, ##__VA_ARGS__) ; \
-            log_close(log_id); \
-        } \
-    }while(0)
+#define LOG_PRINT(level, fmt, ...)                          \
+    do                                                      \
+    {                                                       \
+        if (level <= settings.log_level)                    \
+        {                                                   \
+            int log_id = log_open(settings.log_name, "a");  \
+            log_printf0(log_id, level, fmt, ##__VA_ARGS__); \
+            log_close(log_id);                              \
+        }                                                   \
+    } while (0)
 #endif
 
 #endif
