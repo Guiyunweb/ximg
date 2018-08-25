@@ -7,7 +7,37 @@ local type_list = {
 		rotate              = 90,
 		gray			    = 1,
         format              = 'webp',
-	},
+    },
+    head = {
+        cols = 300,
+        rows = 300,
+        format = 'jpeg'
+    },
+    green = {
+        cols = 400,
+        rows = 200,
+        format = 'jpeg'
+    },
+    art_title = {
+        cols = 172,
+        rows = 120,
+        format = 'jpeg'
+    },
+    ppt = {
+        cols = 500,
+        rows = 300,
+        format = 'jpeg'
+    },
+    thumb = {
+        cols = 300,
+        rows = 300,
+        format = 'jpeg'
+    },
+    d_one = {
+        cols = 400,
+        rows = 250,
+        format = 'jpeg'
+    }
 }
 local OK                    = 1
 
