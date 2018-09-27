@@ -305,10 +305,12 @@ err:
     if (temp != NULL)
     {
         free(temp);
+        temp = NULL;
     }
     if (buff != NULL)
     {
         free(buff);
+        buff = NULL;
     }
     list = (LinkedList *)malloc(sizeof(LinkedList));
     initializeList(list);
@@ -318,11 +320,25 @@ err:
     evhtp_headers_add_header(req->headers_out, evhtp_header_new("Server", settings.server_name, 0, 1));
     evhtp_send_reply(req, EVHTP_RES_OK);
     free(ret);
+    ret = NULL;
     LOG_PRINT(LOG_DEBUG, "============base64_request_cb() ERROR!===============");
 done:
-    free(ret);
-    free(temp);
-    free(buff);
+    if (ret)
+    {
+        free(ret);
+        ret = NULL;
+    }
+    if (temp != NULL)
+    {
+        free(temp);
+        temp = NULL;
+    }
+    if (buff != NULL)
+    {
+        free(buff);
+        buff = NULL;
+    }
+    LOG_PRINT(LOG_DEBUG, "============base64_request_cb() DONE!===============");
 }
 
 int x_binary_parse(evhtp_request_t *req, const char *content_type, const char *address, const char *buff, int post_size)
